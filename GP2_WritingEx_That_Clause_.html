@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Writing 並べ替え練習</title>
+
+<style>
+body{
+  font-family:"Hiragino Maru Gothic ProN",sans-serif;
+  background:#fff9e6;
+  text-align:center;
+  padding:20px;
+}
+.frame{
+  border:3px solid #b6d957;
+  background:#fff;
+  padding:20px;
+  max-width:980px;
+  margin:auto;
+  border-radius:12px;
+}
+.qnum{font-size:24px;font-weight:bold;}
+.grammar{
+  font-size:18px;
+  color:#2b6cb0;
+  margin:6px 0;
+  font-weight:bold;
+}
+.jp{
+  font-size:15px;
+  color:#666;
+  margin-bottom:12px;
+}
+.row{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(90px,1fr));
+  gap:10px;
+  margin:14px 0;
+}
+.slot{
+  height:60px;
+  border:2px dashed #bbb;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.card{
+  background:#e6f5e6;
+  padding:8px 12px;
+  border-radius:8px;
+  box-shadow:2px 2px 6px rgba(0,0,0,.25);
+  cursor:pointer;
+  user-select:none;
+  font-size:16px;
+  font-weight:bold;
+}
+button{
+  padding:8px 18px;
+  font-size:16px;
+  margin:6px;
+}
+#message{
+  font-size:20px;
+  height:28px;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Writing 並べ替え練習</h2>
+
+<div class="frame">
+  <div class="qnum" id="qnum"></div>
+  <div class="grammar" id="grammar"></div>
+  <div class="jp" id="jp"></div>
+
+  <div class="row" id="answerRow"></div>
+  <div class="row" id="cardRow"></div>
+
+  <button onclick="checkAnswer()">Check</button>
+  <button onclick="shuffle()">Shuffle</button>
+  <button id="nextBtn" onclick="nextQ()" style="display:none">NEXT ▶</button>
+  <button onclick="makePDF()">📄 PDF</button>
+
+  <div id="message"></div>
+</div>
+
+<canvas id="confetti" style="position:fixed;top:0;left:0;pointer-events:none;"></canvas>
+
+<script>
+const data=[
+{
+ grammar:"形式主語 it",
+ en:["It","is","important","for","students","to","experience","things","outside","of","school","."],
+ jp:"生徒にとって、学校の外でさまざまなことを経験することは重要である。"
+},
+{
+ grammar:"形式主語 it",
+ en:["It","is","essential","for","children","to","play","outside","in","order","to","stay","healthy","."],
+ jp:"健康でいるために、子どもが外で遊ぶことは不可欠である。"
+},
+{
+ grammar:"主語の内容を表す that節",
+ en:["It","is","essential","that","students","have","part-time","jobs","before","they","start","working","as","adults","."],
+ jp:"大人として働き始める前に、生徒がアルバイトを経験することは重要である。"
+},
+{
+ grammar:"主語の内容を表す that節",
+ en:["It","is","helpful","for","tourists","that","more","Japanese","people","speak","English","nowadays","."],
+ jp:"近年、より多くの日本人が英語を話すことは、観光客にとって役に立つ。"
+},
+{
+ grammar:"同格の that節",
+ en:["Having","a","part-time","job","gives","students","the","idea","that","earning","money","isn't","easy","."],
+ jp:"アルバイトをすることで、お金を稼ぐことは簡単ではないと生徒は学ぶ。"
+},
+{
+ grammar:"同格の that節",
+ en:["Participating","in","volunteer","work","gives","students","the","idea","that","helping","others","can","lead","to","a","better","society","."],
+ jp:"ボランティア活動に参加することで、他人を助けることがより良い社会につながると生徒は学ぶ。"
+},
+{
+ grammar:"同格の that節",
+ en:["Participating","in","club","activities","gives","students","the","idea","that","helping","each","other","leads","to","big","achievements","."],
+ jp:"部活動に参加することで、協力することが大きな成果につながると生徒は学ぶ。"
+}
+];
+
+let cur=0, dragged=null;
+
+function loadQ(){
+  message.textContent="";
+  nextBtn.style.display="none";
+  const q=data[cur];
+  qnum.textContent="Q"+(cur+1);
+  grammar.textContent=q.grammar;
+  jp.textContent=q.jp;
+  answerRow.innerHTML="";
+  cardRow.innerHTML="";
+  q.en.forEach((w,i)=>{
+    answerRow.appendChild(makeSlot());
+    cardRow.appendChild(makeSlot(w,i));
+  });
+  shuffle();
+}
+
+function makeSlot(word="",home=null){
+  const s=document.createElement("div");
+  s.className="slot";
+  s.ondragover=e=>e.preventDefault();
+  s.ondrop=()=>{ if(dragged && !s.firstChild) s.appendChild(dragged); };
+  if(word){
+    const c=document.createElement("div");
+    c.className="card";
+    c.textContent=word;
+    c.dataset.home=home;
+    c.draggable=true;
+    c.onclick=()=>tapMove(c);
+    c.ondragstart=()=>dragged=c;
+    s.appendChild(c);
+  }
+  s.onclick=()=>{
+    if(s.parentElement.id==="answerRow" && s.firstChild){
+      cardRow.children[s.firstChild.dataset.home].appendChild(s.firstChild);
+    }
+  };
+  return s;
+}
+
+function tapMove(card){
+  const empty=[...answerRow.children].find(s=>!s.firstChild);
+  if(empty) empty.appendChild(card);
+}
+
+function shuffle(){
+  const cards=[...document.querySelectorAll(".card")];
+  cardRow.querySelectorAll(".slot").forEach(s=>s.innerHTML="");
+  cards.sort(()=>Math.random()-.5)
+       .forEach((c,i)=>cardRow.children[i].appendChild(c));
+}
+
+function checkAnswer(){
+  const ans=[...answerRow.children].map(s=>s.firstChild?.textContent||"");
+  if(JSON.stringify(ans)===JSON.stringify(data[cur].en)){
+    message.textContent="Correct! ✅";
+    speak();
+    nextBtn.style.display="inline-block";
+  }else{
+    message.textContent="Try again ❌";
+  }
+}
+
+function speak(){
+  const u=new SpeechSynthesisUtterance(data[cur].en.join(" "));
+  u.lang="en-US";
+  u.rate=0.9;
+  speechSynthesis.speak(u);
+}
+
+function nextQ(){
+  cur++;
+  cur===data.length?finish():loadQ();
+}
+
+function finish(){
+  message.textContent="Perfect! 🎉";
+}
+
+function shuffleArray(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function makePDF(){
+  const w=window.open("");
+  w.document.write(`
+  <html><head><style>
+  body{font-family:"Hiragino Maru Gothic ProN";padding:24px;}
+  h2{text-align:center;}
+  .q{margin-bottom:22px;}
+  .jp{color:#555;}
+  .words{font-size:13px;margin:6px 0;}
+  .line{border-bottom:1px solid #000;height:22px;margin-bottom:4px;}
+  </style></head><body>
+  <h2>Writing 並べ替え練習</h2>
+  Name: ____________　Date: ____________
+  `);
+  data.forEach((q,i)=>{
+    const shuffled=shuffleArray(q.en);
+    w.document.write(`
+      <div class="q">
+        <b>Q${i+1}【${q.grammar}】</b><br>
+        （${q.jp}）<br>
+        <div class="words">${shuffled.join(" / ")}</div>
+        <div class="line"></div><div class="line"></div>
+      </div>
+    `);
+  });
+  w.document.write("</body></html>");
+  w.document.close();
+  w.print();
+}
+
+loadQ();
+</script>
+</body>
+</html>
