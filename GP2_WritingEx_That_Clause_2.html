@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ライティング並べ替え練習2</title>
+
+<style>
+body{
+  font-family:"Hiragino Maru Gothic ProN",sans-serif;
+  background:#fff9e6;
+  text-align:center;
+  padding:20px;
+}
+.frame{
+  border:3px solid #b6d957;
+  background:#fff;
+  padding:20px;
+  max-width:980px;
+  margin:auto;
+  border-radius:12px;
+}
+.qnum{font-size:24px;font-weight:bold;}
+.grammar{
+  font-size:18px;
+  color:#2b6cb0;
+  margin:6px 0;
+  font-weight:bold;
+}
+.jp{
+  font-size:15px;
+  color:#555;
+  margin-bottom:12px;
+}
+.row{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(90px,1fr));
+  gap:10px;
+  margin:14px 0;
+}
+.slot{
+  height:60px;
+  border:2px dashed #bbb;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.card{
+  background:#e6f5e6;
+  padding:8px 12px;
+  border-radius:8px;
+  box-shadow:2px 2px 6px rgba(0,0,0,.25);
+  cursor:pointer;
+  user-select:none;
+  font-size:16px;
+  font-weight:bold;
+}
+button{
+  padding:8px 18px;
+  font-size:16px;
+  margin:6px;
+}
+#message{
+  font-size:20px;
+  height:28px;
+  font-weight:bold;
+}
+#progress{
+  margin-bottom:10px;
+  font-size:16px;
+  color:#444;
+}
+</style>
+</head>
+
+<body>
+
+<h2>ライティング並べ替え練習2</h2>
+
+<div class="frame">
+
+  <div id="progress">
+    全 <b id="totalQ"></b> 問あります
+  </div>
+
+  <div class="qnum" id="qnum"></div>
+  <div class="grammar" id="grammar"></div>
+  <div class="jp" id="jp"></div>
+
+  <div class="row" id="answerRow"></div>
+  <div class="row" id="cardRow"></div>
+
+  <button onclick="checkAnswer()">Check</button>
+  <button onclick="shuffle()">Shuffle</button>
+  <button id="nextBtn" onclick="nextQ()" style="display:none">NEXT ▶</button>
+  <button onclick="makePDF()">📄 PDF</button>
+
+  <div id="message"></div>
+</div>
+
+<script>
+const data = [
+{
+ grammar:"形式主語 it",
+ en:["It","is","more","cost-effective","for","people","to","work","from","home","than","to","commute","."],
+ jp:"人々にとって、通勤するよりも在宅で働くほうが、より費用対効果が高い。"
+},
+{
+ grammar:"形式主語 it",
+ en:["It","is","crucial","for","college","students","to","study","English","more","seriously","in","order","to","adapt","to","the","international","community","."],
+ jp:"大学生にとって、国際社会に適応するために英語をより真剣に学ぶことは非常に重要である。"
+},
+{
+ grammar:"形式主語 it",
+ en:["It","is","becoming","more","dangerous","for","people","of","any","age","to","travel","alone","to","another","country","."],
+ jp:"いかなる年齢の人も一人で外国へ旅行することは、ますます危険になってきている。"
+},
+{
+ grammar:"that節",
+ en:["It","is","becoming","increasingly","serious","that","the","number","of","people","in","need","is","increasing","around","the","world","."],
+ jp:"世界中で支援を必要とする人の数が増えていることは、ますます深刻な問題になってきている。"
+},
+{
+ grammar:"that節",
+ en:["It","has","been","a","problem","that","increasing","carbon","dioxide","emissions","are","contributing","to","global","warming","."],
+ jp:"二酸化炭素の排出量の増加が地球温暖化に影響を与えていることは、以前から問題となっている。"
+},
+{
+ grammar:"同格の that",
+ en:["Studying","abroad","gives","people","of","any","age","the","idea","that","learning","about","other","cultures","helps","them","understand","their","own","culture","."],
+ jp:"留学は、いかなる年齢の人々に「他国の文化を学ぶことは自国の文化を理解する助けになる」という考えを与える。"
+},
+{
+ grammar:"同格の that",
+ en:["Being","bullied","gives","students","the","idea","that","speaking","up","is","difficult",",","even","though","it","is","necessary","."],
+ jp:"いじめを受けることは、生徒たちに「必要であっても声を上げることは難しい」という考えを抱かせる。"
+},
+{
+ grammar:"同格の that",
+ en:["Having","parents","who","will","help","no","matter","what","gives","a","person","confidence","that","he","or","she","will","be","protected","."],
+ jp:"なにがあろうと助けてくれる親がいるということは、その人に「自分は守られる」という自信を与える。"
+}
+];
+
+let cur = 0;
+let wrong = [];
+let dragged = null;
+
+function loadQ(){
+  message.textContent="";
+  nextBtn.style.display="none";
+  const q=data[cur];
+  qnum.textContent="Q"+(cur+1);
+  grammar.textContent=q.grammar;
+  jp.textContent=q.jp;
+  answerRow.innerHTML="";
+  cardRow.innerHTML="";
+  q.en.forEach((w,i)=>{
+    answerRow.appendChild(makeSlot());
+    cardRow.appendChild(makeSlot(w,i));
+  });
+  shuffle();
+}
+
+function makeSlot(word="",home=null){
+  const s=document.createElement("div");
+  s.className="slot";
+  s.ondragover=e=>e.preventDefault();
+  s.ondrop=()=>{ if(dragged && !s.firstChild) s.appendChild(dragged); };
+  if(word){
+    const c=document.createElement("div");
+    c.className="card";
+    c.textContent=word;
+    c.dataset.home=home;
+    c.draggable=true;
+    c.onclick=()=>tapMove(c);
+    c.ondragstart=()=>dragged=c;
+    s.appendChild(c);
+  }
+  s.onclick=()=>{
+    if(s.parentElement.id==="answerRow" && s.firstChild){
+      cardRow.children[s.firstChild.dataset.home].appendChild(s.firstChild);
+    }
+  };
+  return s;
+}
+
+function tapMove(card){
+  const empty=[...answerRow.children].find(s=>!s.firstChild);
+  if(empty) empty.appendChild(card);
+}
+
+function shuffle(){
+  const cards=[...document.querySelectorAll(".card")];
+  cardRow.querySelectorAll(".slot").forEach(s=>s.innerHTML="");
+  cards.sort(()=>Math.random()-.5)
+       .forEach((c,i)=>cardRow.children[i].appendChild(c));
+}
+
+function checkAnswer(){
+  const ans=[...answerRow.children].map(s=>s.firstChild?.textContent||"");
+  if(JSON.stringify(ans)===JSON.stringify(data[cur].en)){
+    message.textContent="Correct! ✅";
+    nextBtn.style.display="inline-block";
+  }else{
+    message.textContent="Try again ❌";
+    wrong.push(data[cur]);
+  }
+}
+
+function nextQ(){
+  cur++;
+  if(cur < data.length){
+    loadQ();
+  }else if(wrong.length){
+    data.splice(0,data.length,...wrong);
+    wrong=[];
+    cur=0;
+    alert("復習モードに入ります");
+    loadQ();
+  }else{
+    message.textContent="全部完成！おつかれさまでした 🎉";
+  }
+}
+
+function shuffleArray(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function makePDF(){
+  const w = window.open("");
+  w.document.write(`
+  <html><head><style>
+  body{font-family:"Hiragino Maru Gothic ProN";padding:24px;}
+  .q{margin-bottom:22px;page-break-inside:avoid;}
+  .line{border-bottom:1px solid #000;height:22px;margin-bottom:4px;}
+  .page-break{page-break-before:always;}
+  </style></head><body>
+  <h2>ライティング並べ替え練習2</h2>
+  Name: ________  Date: ________
+  `);
+
+  data.forEach((q,i)=>{
+    w.document.write(`
+    <div class="q">
+      <b>Q${i+1}【${q.grammar}】</b><br>
+      （${q.jp}）<br>
+      ${shuffleArray(q.en).join(" / ")}
+      <div class="line"></div>
+      <div class="line"></div>
+    </div>
+    `);
+  });
+
+  w.document.write(`<div class="page-break"></div><h2>Answer</h2>`);
+  data.forEach((q,i)=>{
+    w.document.write(`<div><b>Q${i+1}</b> ${q.en.join(" ")}</div>`);
+  });
+
+  w.document.write(`</body></html>`);
+  w.document.close();
+  w.print();
+}
+
+loadQ();
+totalQ.textContent=data.length;
+</script>
+
+</body>
+</html>
