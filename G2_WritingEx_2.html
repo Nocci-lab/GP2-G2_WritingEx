@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Some people practice foreign languages with artificial intelligence (AI). Do you think this is a good idea? （否定）</title>
+
+<style>
+body{
+  font-family:"Hiragino Maru Gothic ProN",sans-serif;
+  background:#fff9e6;
+  text-align:center;
+  padding:20px;
+}
+.frame{
+  border:3px solid #b6d957;
+  background:#fff;
+  padding:20px;
+  max-width:980px;
+  margin:auto;
+  border-radius:12px;
+}
+.qnum{font-size:24px;font-weight:bold;}
+.grammar{
+  font-size:18px;
+  color:#2b6cb0;
+  margin:6px 0;
+  font-weight:bold;
+}
+.jp{
+  font-size:15px;
+  color:#666;
+  margin-bottom:12px;
+}
+.row{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(90px,1fr));
+  gap:10px;
+  margin:14px 0;
+}
+.slot{
+  height:60px;
+  border:2px dashed #bbb;
+  border-radius:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.card{
+  background:#e6f5e6;
+  padding:8px 12px;
+  border-radius:8px;
+  box-shadow:2px 2px 6px rgba(0,0,0,.25);
+  cursor:pointer;
+  user-select:none;
+  font-size:16px;
+  font-weight:bold;
+}
+button{
+  padding:8px 18px;
+  font-size:16px;
+  margin:6px;
+}
+#message{
+  font-size:20px;
+  height:28px;
+  font-weight:bold;
+}
+#progress{
+  margin-bottom:10px;
+  font-size:16px;
+  color:#444;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Some people practice foreign languages with artificial intelligence (AI). Do you think this is a good idea? （否定文）</h2>
+
+<div class="frame">
+
+  <div id="progress">
+    全 <b id="totalQ"></b> 問あります
+  </div>
+
+  <div class="qnum" id="qnum"></div>
+  <div class="grammar" id="grammar"></div>
+  <div class="jp" id="jp"></div>
+
+  <div class="row" id="answerRow"></div>
+  <div class="row" id="cardRow"></div>
+
+  <button onclick="checkAnswer()">Check</button>
+  <button onclick="shuffle()">Shuffle</button>
+  <button id="nextBtn" onclick="nextQ()" style="display:none">NEXT ▶</button>
+  <button onclick="makePDF()">📄 PDF</button>
+
+  <div id="message"></div>
+</div>
+
+<canvas id="confetti" style="position:fixed;top:0;left:0;pointer-events:none;"></canvas>
+
+<script>
+const data = [
+{
+  grammar:"【目的語の that節】【形式主語 it】【接続詞 when】",
+  en:
+  ["I","don’t","think","that","it","is","a","good","idea","for","people","to","use","AI","when","they","practice","foreign","languages","."],
+  jp:"私は、人々が外国語を練習するときにAIを使うのは良い考えだとは思いません。"
+},
+{
+  grammar:"【接続詞 because】【動名詞を主語に】【SVOO】【同格の that】【接続詞 as long as】",
+  en:
+  ["First","of","all",",","it","can","be","dangerous","because","using","AI","and","getting","instant","translations","could","give","people","the","idea","that","they","do","not","have","to","study","other","languages","as","long","as","they","have","AI","."],
+  jp:"まず第一に、AIを使ってすぐに翻訳を得ることは、人々に、AIがある限り他の言語を勉強しなくてもよいという考えを与えてしまう可能性があるので、危険かもしれません。"
+},
+{
+  grammar:"【動名詞を主語に】【SVOC】",
+  en:
+  ["Secondly",",","relying","on","AI","too","often","may","make","people","lazy","and","uncreative","."],
+  jp:"第二に、AIに頼りすぎると、人々は怠けがちになり、創造性がなくなるかもしれません。"
+},
+{
+  grammar:"【使役動詞を使った SVOC】【前の文全体を受ける which】",
+  en:
+  ["In","fact",",","some","university","students","make","AI","write","their","entire","reports",",","which","is","becoming","a","problem","."],
+  jp:"実際に、一部の大学生はAIにレポート全体を書かせており、それが問題になりつつあります。"
+},
+{
+  grammar:"【助動詞 should】【接続詞 when＋分詞構文】",
+  en:
+  ["In","conclusion",",","people","should","not","rely","too","much","on","AI","when","learning","other","languages","."],
+  jp:"結論として、人々は他の言語を学ぶときにAIにあまり頼りすぎるべきではありません。"
+}
+];
+
+let cur=0, dragged=null;
+
+function loadQ(){
+  message.textContent="";
+  nextBtn.style.display="none";
+  const q=data[cur];
+  qnum.textContent="Q"+(cur+1);
+  grammar.textContent=q.grammar;
+  jp.textContent=q.jp;
+  answerRow.innerHTML="";
+  cardRow.innerHTML="";
+  q.en.forEach((w,i)=>{
+    answerRow.appendChild(makeSlot());
+    cardRow.appendChild(makeSlot(w,i));
+  });
+  shuffle();
+}
+
+function makeSlot(word="",home=null){
+  const s=document.createElement("div");
+  s.className="slot";
+  s.ondragover=e=>e.preventDefault();
+  s.ondrop=()=>{ if(dragged && !s.firstChild) s.appendChild(dragged); };
+  if(word){
+    const c=document.createElement("div");
+    c.className="card";
+    c.textContent=word;
+    c.dataset.home=home;
+    c.draggable=true;
+    c.onclick=()=>tapMove(c);
+    c.ondragstart=()=>dragged=c;
+    s.appendChild(c);
+  }
+  s.onclick=()=>{
+    if(s.parentElement.id==="answerRow" && s.firstChild){
+      cardRow.children[s.firstChild.dataset.home].appendChild(s.firstChild);
+    }
+  };
+  return s;
+}
+
+function tapMove(card){
+  const empty=[...answerRow.children].find(s=>!s.firstChild);
+  if(empty) empty.appendChild(card);
+}
+
+function shuffle(){
+  const cards=[...document.querySelectorAll(".card")];
+  cardRow.querySelectorAll(".slot").forEach(s=>s.innerHTML="");
+  cards.sort(()=>Math.random()-.5)
+       .forEach((c,i)=>cardRow.children[i].appendChild(c));
+}
+
+function checkAnswer(){
+  const ans=[...answerRow.children].map(s=>s.firstChild?.textContent||"");
+  if(JSON.stringify(ans)===JSON.stringify(data[cur].en)){
+    message.textContent="Correct! ✅";
+    speak();
+    nextBtn.style.display="inline-block";
+  }else{
+    message.textContent="Try again ❌";
+  }
+}
+
+function speak(){
+  const u=new SpeechSynthesisUtterance(data[cur].en.join(" "));
+  u.lang="en-US";
+  u.rate=0.75; // ← Google US ゆっくり75
+  speechSynthesis.speak(u);
+}
+
+function nextQ(){
+  cur++;
+  cur===data.length ? finish() : loadQ();
+}
+
+function finish(){
+  message.textContent="全部完成！Perfect!! 🎉";
+  launchConfetti();
+}
+
+function launchConfetti(){
+  const canvas = document.getElementById("confetti");
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const pieces = Array.from({length:120}, () => ({
+    x: Math.random()*canvas.width,
+    y: Math.random()*canvas.height - canvas.height,
+    r: Math.random()*6+4,
+    c: `hsl(${Math.random()*360},80%,60%)`,
+    s: Math.random()*3+2
+  }));
+
+  let t = 0;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      ctx.fillStyle=p.c;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y+=p.s,p.r,0,Math.PI*2);
+      ctx.fill();
+    });
+    if(t++ < 180) requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+  draw();
+}
+
+function shuffleArray(arr){
+  const a=[...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function makePDF(){
+  const w = window.open("");
+
+  /* ========= 問題ページ ========= */
+  w.document.write(`
+  <html>
+  <head>
+    <style>
+      body{
+        font-family:"Hiragino Maru Gothic ProN";
+        padding:24px;
+      }
+      h2{
+  text-align:left;
+  margin-bottom:20px;
+}
+
+      .q{
+        margin-bottom:22px;
+        page-break-inside: avoid;
+      }
+      .jp{color:#555;}
+      .words{font-size:13px;margin:6px 0;}
+      .line{
+        border-bottom:1px solid #000;
+        height:22px;
+        margin-bottom:4px;
+      }
+      .page-break{
+        page-break-before: always;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Some people practice foreign languages with artificial intelligence (AI). Do you think this is a good idea? （否定）</h2>
+
+<div style="margin-bottom:25px;">
+  Name: __________________　Date: ____________
+</div>
+  `);
+
+  data.forEach((q,i)=>{
+    const shuffled = shuffleArray(q.en);
+    w.document.write(`
+      <div class="q">
+        <b>Q${i+1}【${q.grammar}】</b><br>
+        （${q.jp}）<br>
+        <div class="words">${shuffled.join(" / ")}</div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+        <div class="line"></div>
+
+      </div>
+    `);
+  });
+
+  /* ========= 答えページ（別ページ） ========= */
+  w.document.write(`
+    <div class="page-break"></div>
+    <h2>Answer</h2>
+  `);
+
+  data.forEach((q,i)=>{
+    w.document.write(`
+      <div class="q">
+        <b>Q${i+1}</b><br>
+        ${q.en.join(" ")}
+      </div>
+    `);
+  });
+
+  w.document.write(`
+  </body>
+  </html>
+  `);
+
+  w.document.close();
+  w.print();
+}
+
+loadQ();
+totalQ.textContent = data.length;
+</script>
+</body>
+</html>
